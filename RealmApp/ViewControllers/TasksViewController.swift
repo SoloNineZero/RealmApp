@@ -9,12 +9,14 @@
 import UIKit
 import RealmSwift
 
-class TasksViewController: UITableViewController {
+final class TasksViewController: UITableViewController {
     
     var taskList: TaskList!
     
+    private var task: Results<Task>!
     private var currentTasks: Results<Task>!
     private var completedTasks: Results<Task>!
+    
     private let storageManager = StorageManager.shared
 
     override func viewDidLoad() {
@@ -29,6 +31,7 @@ class TasksViewController: UITableViewController {
         navigationItem.rightBarButtonItems = [addButton, editButtonItem]
         currentTasks = taskList.tasks.filter("isComplete = false")
         completedTasks = taskList.tasks.filter("isComplete = true")
+        task = storageManager.realm.objects(Task.self)
     }
     
     // MARK: - Table view data source
@@ -54,10 +57,40 @@ class TasksViewController: UITableViewController {
         return cell
     }
     
-//    override func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-//        let task = indexPath.section == 0 ?
-//        return UISwipeActionsConfiguration(actions: <#T##[UIContextualAction]#>)
-//    }
+    override func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let task = indexPath.section == 0 ? currentTasks[indexPath.row] : completedTasks[indexPath.row]
+
+        let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [unowned self] _, _, _ in
+            storageManager.delete(task)
+            tableView.deleteRows(at: [indexPath], with: .automatic)
+        }
+
+        let editAction = UIContextualAction(style: .normal, title: "Edit") { [unowned self] (_, _, isDone) in
+            showAlert(with: task) {
+                tableView.reloadRows(at: [indexPath], with: .automatic)
+            }
+            isDone(true)
+        }
+
+        let title = indexPath.section == 0 ? "Done" : "Undone"
+
+        let doneAction = UIContextualAction(style: .normal, title: title) { [unowned self] _, _, isDone in
+            storageManager.done(task)
+
+            let indexCurrentTask = IndexPath(row: self.currentTasks.count - 1, section: 0)
+            let indexCompletedTask = IndexPath(row: self.completedTasks.count - 1, section: 1)
+            let index = indexPath.section == 0 ? indexCompletedTask : indexCurrentTask
+
+            tableView.moveRow(at: indexPath, to: index)
+            isDone(true)
+        }
+
+
+        editAction.backgroundColor = .orange
+        doneAction.backgroundColor = #colorLiteral(red: 0.3411764801, green: 0.6235294342, blue: 0.1686274558, alpha: 1)
+
+        return UISwipeActionsConfiguration(actions: [doneAction, editAction, deleteAction])
+    }
     
     @objc private func addButtonPressed() {
         showAlert()
@@ -74,7 +107,9 @@ extension TasksViewController {
         )
         let alert = taskAlertFactory.createAlert { [weak self] taskTitle, taskNote in
             if let task, let completion {
-                // TODO: - edit task
+                self?.storageManager.edit(task, taskNote: task, newValueTitle: taskTitle, newValueNote: taskNote)
+                completion()
+                return
             } else {
                 self?.save(task: taskTitle, withNote: taskNote)
             }
