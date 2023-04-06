@@ -15,7 +15,7 @@ final class TasksViewController: UITableViewController {
     
     private var task: Results<Task>!
     private var currentTasks: Results<Task>!
-    private var completedTasks: Results<Task>!
+    var completedTasks: Results<Task>!
     
     private let storageManager = StorageManager.shared
 
@@ -98,8 +98,8 @@ final class TasksViewController: UITableViewController {
 
 }
 
-extension TasksViewController {
-    private func showAlert(with task: Task? = nil, completion: (() -> Void)? = nil) {
+private extension TasksViewController {
+    func showAlert(with task: Task? = nil, completion: (() -> Void)? = nil) {
         let taskAlertFactory = TaskAlertControllerFactory(
             userAction: task != nil ? .editTask : .newTask,
             taskTitle: task?.title,
@@ -118,7 +118,7 @@ extension TasksViewController {
         present(alert, animated: true)
     }
     
-    private func save(task: String, withNote note: String) {
+    func save(task: String, withNote note: String) {
         storageManager.save(task, withTaskNote: note, to: taskList) { task in
             let rowIndex = IndexPath(row: currentTasks.index(of: task) ?? 0, section: 0)
             tableView.insertRows(at: [rowIndex], with: .automatic)

@@ -43,7 +43,15 @@ final class TaskListViewController: UITableViewController {
         var content = cell.defaultContentConfiguration()
         let taskList = taskLists[indexPath.row]
         content.text = taskList.title
-        content.secondaryText = taskList.tasks.count.formatted()
+        
+        let currentTaskCount = taskList.tasks.filter("isComplete = false").count
+        let allTasksCount = taskList.tasks.count
+        if currentTaskCount == 0 {
+            cell.accessoryType = .checkmark
+        } else {
+            cell.accessoryType = .none
+            content.secondaryText =  "\(currentTaskCount)/\(allTasksCount)"
+        }
         cell.contentConfiguration = content
         return cell
     }
@@ -106,8 +114,8 @@ final class TaskListViewController: UITableViewController {
 }
 
 // MARK: - AlertController
-extension TaskListViewController {
-    private func showAlert(with taskList: TaskList? = nil, completion: (() -> Void)? = nil) {
+private extension TaskListViewController {
+    func showAlert(with taskList: TaskList? = nil, completion: (() -> Void)? = nil) {
         let listAlertFactory = TaskListAlertControllerFactory(
             userAction: taskList != nil ? .editList : .newList,
             listTitle: taskList?.title
@@ -126,7 +134,7 @@ extension TaskListViewController {
         present(alert, animated: true)
     }
     
-    private func save(taskListTitle: String) {
+    func save(taskListTitle: String) {
         storageManager.save(taskListTitle) { taskList in
             let rowIndex = IndexPath(row: taskLists.index(of: taskList) ?? 0, section: 0)
             tableView.insertRows(at: [rowIndex], with: .automatic)
